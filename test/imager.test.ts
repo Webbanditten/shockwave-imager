@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import { PNG } from 'pngjs';
 import { createImager } from '../src/app';
 
-// The service over the casts in samples/ (three furni; no Habbo casts).
+// The service over the casts in samples/ (three furni and the Habbo casts).
 let server: Server;
 let base: string;
 
@@ -86,8 +86,37 @@ describe('service', () => {
     expect((await get('/nope')).status).toBe(404);
   });
 
-  it('says what is missing when the Habbo casts are not there', async () => {
-    expect((await get('/avatar?figure=1500118001275343000521525')).status).toBe(502);
+  it('answers 502 when a cast can not be read', async () => {
+    const imager = createImager({ assets: 'samples', peopleCasts: ['dcr/missing.cct'] });
+    const broken = createServer((req, res) => void imager.handle(req, res)).listen(0, '127.0.0.1');
+    await new Promise((resolve) => broken.once('listening', resolve));
+    const res = await fetch(`http://127.0.0.1:${(broken.address() as AddressInfo).port}/avatar?figure=1500118001275343000521525`);
+    broken.close();
+    expect(res.status).toBe(502);
+  });
+});
+
+describe('avatar', () => {
+  const figure = '1500118001275343000521525';
+
+  it.each([
+    [`figure=${figure}`, 64, 110, '7b7af2a70b79a9b1'],
+    [`figure=${figure}&size=s&direction=4&action=wav&gesture=sml`, 32, 55, 'f731496ecf0c4efb'],
+    [`figure=${figure}&head=1&size=l`, 66, 70, '0881743e678773eb'],
+    [`figure=${figure}&crr=5&action=crr&direction=3`, 64, 110, 'f11360b5a237b775'],
+  ])('%s', async (query, width, height, hash) => {
+    const res = await get(`/avatar?${query}`);
+    expect(res.status).toBe(200);
+    expect(pixels(res.body)).toEqual([width, height, hash]);
+  });
+
+  it('dances as an animated PNG', async () => {
+    const res = await get(`/avatar?figure=${figure}&dance=2`);
+    expect(res.status).toBe(200);
+    expect(res.body.includes(Buffer.from('acTL'))).toBe(true);
+  });
+
+  it('answers 400 without a figure, 404 for figures it does not draw', async () => {
     expect((await get('/avatar')).status).toBe(400);
     expect((await get('/avatar?figure=hd-180-1.ch-210-66')).status).toBe(404); // not a 2006 figure
   });

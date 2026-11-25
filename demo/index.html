@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>shockwave-imager</title>
+  <meta name="description" content="Furni and Habbo pictures drawn from Shockwave casts, live in your browser.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>shockwave-imager</h1>
+      <p class="lede">Furni and Habbo pictures drawn from a hotel's own Shockwave casts, the way the client draws them in a
+        room. Everything on this page is drawn in your browser by the service's own code, from the sample casts in the
+        repository.</p>
+      <p class="links">
+        <a href="https://github.com/Webbanditten/shockwave-imager">GitHub</a>
+        <a href="https://github.com/Webbanditten/shockwave-imager#run-it">Run the service</a>
+        <a href="https://github.com/Webbanditten/shockwave-imager#endpoints">Endpoints</a>
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="showcase" aria-label="Examples">
+      <div class="strip" id="strip"><p class="loading">Loading casts…</p></div>
+      <button type="button" class="ghost" id="shuffle">Shuffle</button>
+    </section>
+
+    <div class="panels">
+      <section class="panel" aria-labelledby="habbo-title">
+        <h2 id="habbo-title">Habbo <code>/avatar</code></h2>
+        <div class="stage" id="habbo-stage"><img id="habbo-img" alt="The Habbo"></div>
+        <div class="zoom" data-for="habbo-img"></div>
+
+        <div class="controls">
+          <div class="row">
+            <span class="label">Sex</span>
+            <div class="seg" id="sex">
+              <button type="button" data-v="M">Boy</button><button type="button" data-v="F">Girl</button>
+            </div>
+            <button type="button" class="ghost" id="random">Random look</button>
+          </div>
+          <div id="parts"></div>
+          <div class="row">
+            <span class="label">Body</span>
+            <button type="button" class="icon" id="body-left" aria-label="Turn left">↺</button>
+            <button type="button" class="icon" id="body-right" aria-label="Turn right">↻</button>
+            <span class="label">Head</span>
+            <button type="button" class="icon" id="head-left" aria-label="Turn head left">↺</button>
+            <button type="button" class="icon" id="head-right" aria-label="Turn head right">↻</button>
+          </div>
+          <div class="row">
+            <label class="label" for="action">Action</label>
+            <select id="action">
+              <option value="std">Stand</option>
+              <option value="wlk">Walk</option>
+              <option value="sit">Sit</option>
+              <option value="lay">Lay</option>
+              <option value="wav">Wave</option>
+              <option value="spk">Talk</option>
+              <option value="crr">Carry</option>
+              <option value="drk">Drink</option>
+            </select>
+            <label class="item" id="item-wrap" hidden>item <input type="number" id="item" min="1" max="99" value="1"></label>
+            <label class="label" for="gesture">Face</label>
+            <select id="gesture">
+              <option value="">Normal</option>
+              <option value="sml">Smile</option>
+              <option value="sad">Sad</option>
+              <option value="agr">Angry</option>
+              <option value="srp">Surprised</option>
+            </select>
+          </div>
+          <div class="row">
+            <label class="label" for="dance">Dance</label>
+            <select id="dance">
+              <option value="">None</option>
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+            </select>
+            <label><input type="checkbox" id="habbo-anim"> Animate</label>
+            <label><input type="checkbox" id="head-only"> Head only</label>
+          </div>
+          <div class="row">
+            <span class="label">Size</span>
+            <div class="seg" id="size">
+              <button type="button" data-v="s">Small</button><button type="button" data-v="b">Normal</button><button type="button" data-v="l">Large</button>
+            </div>
+            <span class="label">Format</span>
+            <div class="seg" id="habbo-format">
+              <button type="button" data-v="png">PNG</button><button type="button" data-v="gif">GIF</button>
+            </div>
+          </div>
+        </div>
+        <div class="request"><code id="habbo-url"></code><button type="button" class="ghost copy" data-copy="habbo-url">Copy</button></div>
+      </section>
+
+      <section class="panel" aria-labelledby="furni-title">
+        <h2 id="furni-title">Furni <code>/furni</code></h2>
+        <div class="stage" id="furni-stage"><img id="furni-img" alt="The furni"></div>
+        <div class="zoom" data-for="furni-img"></div>
+
+        <div class="controls">
+          <div class="row">
+            <span class="label">Furni</span>
+            <div class="seg" id="furni">
+              <button type="button" data-v="chair_norja">Norja chair</button><button type="button" data-v="hc_lmp">Lamp</button><button type="button" data-v="poster20">Poster</button>
+            </div>
+          </div>
+          <div class="row" id="furni-dir-row">
+            <span class="label">Turn</span>
+            <button type="button" class="icon" id="furni-left" aria-label="Turn left">↺</button>
+            <button type="button" class="icon" id="furni-right" aria-label="Turn right">↻</button>
+          </div>
+          <div class="row" id="wall-row" hidden>
+            <span class="label">Wall</span>
+            <div class="seg" id="wall">
+              <button type="button" data-v="leftwall">Left</button><button type="button" data-v="rightwall">Right</button>
+            </div>
+          </div>
+          <div class="row" id="state-row" hidden>
+            <span class="label">State</span>
+            <div class="seg" id="state">
+              <button type="button" data-v="0">Off</button><button type="button" data-v="1">On</button>
+            </div>
+          </div>
+          <div class="row" id="colour-row">
+            <label><input type="checkbox" id="use-colour"> Colour</label>
+            <input type="color" id="colour" value="#d33a2c" aria-label="Part colour">
+          </div>
+          <div class="row">
+            <label><input type="checkbox" id="shadow"> Shadow</label>
+            <label><input type="checkbox" id="small"> 32 px</label>
+            <label><input type="checkbox" id="icon"> Icon</label>
+            <label><input type="checkbox" id="furni-anim" checked> Animate</label>
+          </div>
+          <div class="row">
+            <span class="label">Format</span>
+            <div class="seg" id="furni-format">
+              <button type="button" data-v="png">PNG</button><button type="button" data-v="gif">GIF</button>
+            </div>
+          </div>
+        </div>
+        <div class="request"><code id="furni-url"></code><button type="button" class="ghost copy" data-copy="furni-url">Copy</button></div>
+      </section>
+    </div>
+
+    <p class="foot">The code is MIT licensed. The sample casts are Sulake's and are here only to show the service working.
+      Habbo is a trademark of Sulake Oy; this project is not affiliated with or endorsed by Sulake.</p>
+  </main>
+
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

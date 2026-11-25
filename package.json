@@ -12,7 +12,8 @@
     "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/shockwave-imager.cjs",
     "start": "node dist/shockwave-imager.cjs",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:demo": "node demo/build.mjs"
   },
   "dependencies": {
     "pako": "^2.1.0",

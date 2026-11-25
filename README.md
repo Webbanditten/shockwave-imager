@@ -10,6 +10,9 @@ from the casts the Shockwave client itself loads, the way the client draws them 
   talk, carry, drink), gestures, the head alone, three sizes, and the four **dances** as animated PNGs.
 - **GIF** output for both (`format=gif`), for chat apps and viewers that don't play animated PNGs.
 
+**[Try it in your browser](https://webbanditten.github.io/shockwave-imager/)**: the demo page runs the service's own
+drawing code on the sample casts, with a figure editor for Habbos and the request each picture answers to.
+
 `/avatar` takes Avatara's query parameters, so a CMS can switch over by changing a URL.
 
 It was built for [Habbo Danmark](https://habbo-danmark.com), which runs a 2007 Shockwave client. The Habbos were checked
@@ -22,8 +25,9 @@ work too.
 The service reads casts from your hotel's asset host (a URL) or from a folder. It contains **no Habbo graphics**: it
 reads every bitmap, alias, ink and animation table from your casts at runtime.
 
-`samples/` holds three furni casts (`chair_norja`, `hc_lmp`, `poster_20`) so you can try it and the tests have
-something to draw. Everything else comes from your own hotel.
+`samples/` holds what the service needs to draw Habbos (the people casts, `hh_human` and the figure data) and three
+furni casts (`chair_norja`, `hc_lmp`, `poster_20`), so `ASSETS=samples` works out of the box and the tests have something
+to draw. The rest of the furni (your `hof_furni` folder) comes from your own hotel.
 
 Paths, relative to `ASSETS` (each one can be changed, see [Configuration](#configuration)):
 
@@ -37,13 +41,14 @@ Paths, relative to `ASSETS` (each one can be changed, see [Configuration](#confi
 
 ## Run it
 
-With Docker (the image includes the samples):
+With Docker (the image, built from `main`, includes the samples):
 
 ```sh
-docker build -t shockwave-imager .
-docker run --rm -p 8096:8096 -e ASSETS=/app/samples shockwave-imager
+docker run --rm -p 8096:8096 -e ASSETS=/app/samples ghcr.io/webbanditten/shockwave-imager
+# or build it yourself: docker build -t shockwave-imager .
 # http://localhost:8096/furni?sprite=chair_norja&direction=4
 # http://localhost:8096/furni?sprite=hc_lmp&anim=1
+# http://localhost:8096/avatar?figure=1500118001275343000521525&dance=2
 ```
 
 Against your asset host, or a folder of your casts mounted into the container:
@@ -153,10 +158,14 @@ npm ci
 npm test            # renders the samples and checks their pixels
 npm run typecheck
 npm run build       # dist/shockwave-imager.cjs, one file with no dependencies
+npm run build:demo  # the demo page into site/ (serve it with any static server)
 ```
+
+The drawing core (`src/imager.ts`) does no I/O of its own: `createRenderer(readAsset)` takes a function that returns a
+cast's bytes, so it runs in Node.js (`src/app.ts`) and in the browser (`demo/main.ts`).
 
 ## Legal
 
-The code is MIT licensed (see `LICENSE`). The casts in `samples/` are Sulake's and are not covered by that licence;
-they are here only so the service can be tried and tested. Habbo is a trademark of Sulake Oy. This project is not
+The code is MIT licensed (see `LICENSE`). The casts and the figure data in `samples/` are Sulake's and are not covered
+by that licence; they are here only so the service can be tried and tested. Habbo is a trademark of Sulake Oy. This project is not
 affiliated with or endorsed by Sulake.
