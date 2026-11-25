@@ -1,0 +1,29 @@
+{
+  "name": "shockwave-imager",
+  "version": "1.0.0",
+  "description": "Furni and Habbo pictures drawn from a hotel's own Shockwave (Director) casts, as an HTTP service.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "esbuild src/server.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/shockwave-imager.cjs",
+    "start": "node dist/shockwave-imager.cjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pako": "^2.1.0",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pako": "^2.0.4",
+    "@types/pngjs": "^6.0.5",
+    "esbuild": "^0.25.12",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.6"
+  }
+}
