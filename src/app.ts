@@ -57,6 +57,17 @@ export function createImager(config: ImagerConfig) {
       res.writeHead(200, { 'Content-Type': 'text/plain' }).end(`ok ${renderer.castCount()} casts`);
       return;
     }
+    if (url.pathname === '/parts' && req.method === 'GET') {
+      try {
+        const result = await renderer.parts(url.searchParams);
+        if (result === 'bad') return void res.writeHead(400, { 'Content-Type': 'text/plain' }).end('bad casts');
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' }).end(JSON.stringify(result));
+      } catch (e) {
+        console.error(url.pathname + url.search, (e as Error).message);
+        res.writeHead(502, { 'Content-Type': 'text/plain' }).end('renderer error');
+      }
+      return;
+    }
     if ((url.pathname !== '/furni' && url.pathname !== '/avatar') || req.method !== 'GET') {
       res.writeHead(404).end();
       return;

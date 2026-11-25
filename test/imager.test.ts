@@ -134,6 +134,27 @@ describe('avatar', () => {
     expect(res.body.includes(Buffer.from('acTL'))).toBe(true);
   });
 
+  // Patrick's lobby bot Albert, in the bot format (part=model/colour), without his room's casts (not in samples/)
+  const bot = 'sd=001&sh=003/41,41,41&lg=006/51,51,51&ch=202/139,24,32&lh=001/255,210,179&rh=001/255,210,179&hd=001/255,204,153&ey=001&fc=001/255,204,153&hr=203/97,62,32&ls=002/139,24,32&rs=002/139,24,32&bd=001/255,204,153';
+
+  it('draws a bot figure (the client bot format) at 64 px, and at 32 px with size=s', async () => {
+    const big = await get(`/avatar?figure=${encodeURIComponent(bot)}&direction=2`);
+    expect(big.status).toBe(200);
+    expect(pixels(big.body).slice(0, 2)).toEqual([64, 110]);
+    const small = await get(`/avatar?figure=${encodeURIComponent(bot)}&size=s&raw=1`);
+    expect(pixels(small.body).slice(0, 2)).toEqual([32, 62]);
+  });
+
+  it('lists the parts a room can dress a bot in', async () => {
+    const res = await get('/parts?size=s');
+    expect(res.status).toBe(200);
+    const json = JSON.parse(res.body.toString());
+    expect(json.size).toBe('s');
+    expect(json.parts.hr.length).toBeGreaterThan(10);
+    expect(json.parts.hr[0]).toHaveProperty('players');
+    expect((await get('/parts?casts=../etc')).status).toBe(400);
+  });
+
   it('answers 400 without a figure, 404 for figures it does not draw', async () => {
     expect((await get('/avatar')).status).toBe(400);
     expect((await get('/avatar?figure=hd-180-1.ch-210-66')).status).toBe(404); // not a 2006 figure

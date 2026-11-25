@@ -21,6 +21,7 @@ const imager = createImager({
   humanCast: process.env.HUMAN_CAST,
   figureData: process.env.FIGURE_DATA,
   maxCasts: process.env.MAX_CASTS ? Number(process.env.MAX_CASTS) : undefined,
+  roomCastPath: process.env.ROOM_CAST_PATH,
 });
 
 const port = Number(process.env.PORT ?? 8096);

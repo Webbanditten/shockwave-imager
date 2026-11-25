@@ -10,7 +10,7 @@
  */
 import { loadCast, renderFloorFurni, renderIcon, renderPoster, renderWallItem, type FurniCast, type Rendered } from './render';
 import { renderAnimation } from './animation';
-import { PeopleAssets, guessSex, parseFigure, parseFigureData, websiteAvatar, websiteAvatarFrames, type FigureData } from './avatar';
+import { PeopleAssets, guessSex, parseBotFigure, parseFigure, parseFigureData, partChoices, renderAvatar, roomZoom, websiteAvatar, websiteAvatarFrames, type FigureData, type PartModel } from './avatar';
 import { encodeApng } from './apng';
 import { encodeGif } from './gif';
 import { avatarOptions } from './avatar-query';
@@ -31,6 +31,8 @@ export interface ImagerOptions {
   figureData?: string;
   /** How many parsed casts to keep in memory. */
   maxCasts?: number;
+  /** Folder of the room casts (a bot's `casts=`: hh_room_kitchen, ...). */
+  roomCastPath?: string;
 }
 
 export const DEFAULTS: Required<ImagerOptions> = {
@@ -40,6 +42,7 @@ export const DEFAULTS: Required<ImagerOptions> = {
   humanCast: 'dcr/hh_human.cct',
   figureData: 'gamedata/figuredata.txt',
   maxCasts: 400,
+  roomCastPath: 'dcr',
 };
 
 const MISSING_MS = 10 * 60 * 1000;
@@ -121,8 +124,55 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     }
   }
 
+  /** A bot's room casts from `casts=` (the room's rooms.ccts: hh_room_kitchen,...), parsed and cached like furni casts. */
+  async function roomCasts(q: URLSearchParams): Promise<FurniCast[] | 'bad'> {
+    const names = (q.get('casts') ?? '').split(',').map((n) => n.trim().toLowerCase()).filter(Boolean);
+    if (names.length > 8 || names.some((n) => !/^hh_[a-z0-9_]{1,60}$/.test(n))) return 'bad';
+    const path = o.roomCastPath.replace(/^\/+|\/+$/g, '');
+    const out: FurniCast[] = [];
+    for (const n of names) {
+      const cast = await getCast(`${path ? path + '/' : ''}${n}.cct`);
+      if (cast) out.push(cast);
+    }
+    return out;
+  }
+
+  /** A bot (its figure in the client's bot format) in its room: the room's own parts, and the room's zoom (most
+   *  public rooms draw people at 32 px) unless `size` asks for another. */
+  async function renderBot(q: URLSearchParams, parsed: Map<string, PartModel>): Promise<Picture | null | 'bad'> {
+    const casts = await roomCasts(q);
+    if (casts === 'bad') return 'bad';
+    const { assets } = await getPeople();
+    const people = casts.length ? assets.withCasts(casts) : assets;
+    const params = new URLSearchParams(q);
+    if (!q.get('size') || q.get('size') === 'auto') params.set('size', roomZoom(casts) === 32 ? 's' : 'b');
+    const options = avatarOptions(params);
+    if (options.dance || options.anim) {
+      const a = websiteAvatarFrames(people, parsed, options);
+      return moving(a.width, a.height, a.frames.map((rgba) => ({ rgba, ticks: 1 })), a.fps, 0, q);
+    }
+    // raw=1: the client's own canvas (32x62 / 64x106), which keeps tall hats the website's 32x55 / 64x110 frame cuts
+    if (flag(q.get('raw'))) return still(renderAvatar(people, parsed, { ...options, small: options.size === 's' }), q);
+    return still(websiteAvatar(people, parsed, options), q);
+  }
+
+  /** What a room can dress a bot in: GET /parts?casts=<the room's casts>[&size=b|s] -> { size, parts: { hr: [...] } }. */
+  async function parts(q: URLSearchParams): Promise<object | 'bad'> {
+    const casts = await roomCasts(q);
+    if (casts === 'bad') return 'bad';
+    const { assets, data } = await getPeople();
+    const size = q.get('size') === 's' || q.get('size') === 'b' ? q.get('size')! : roomZoom(casts) === 32 ? 's' : 'b';
+    return { size, zoom: roomZoom(casts) ?? null, parts: partChoices(casts.length ? assets.withCasts(casts) : assets, casts, data, size === 's') };
+  }
+
   async function renderHabbo(q: URLSearchParams): Promise<Picture | null | 'bad'> {
     const figure = (q.get('figure') ?? '').trim();
+    if (figure.includes('=')) {
+      // a bot's figure: part=model/colour&...
+      if (figure.length > 500 || !/^[a-z0-9=&\/,. \r\n-]+$/i.test(figure)) return 'bad';
+      const parsed = parseBotFigure(figure);
+      return parsed ? renderBot(q, parsed) : 'bad';
+    }
     if (!/^\d{25}$/.test(figure)) return figure ? null : 'bad'; // only the 2006 client's 25-digit figures
     const { assets, data } = await getPeople();
     const sexParam = (q.get('sex') ?? '').toUpperCase();
@@ -197,7 +247,7 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     return pathname === '/avatar' ? renderHabbo(q) : renderFurni(q);
   }
 
-  return { render, castCount: () => casts.size, figureData: async () => (await getPeople()).data };
+  return { render, parts, castCount: () => casts.size, figureData: async () => (await getPeople()).data };
 }
 
 function flag(v: string | null) {

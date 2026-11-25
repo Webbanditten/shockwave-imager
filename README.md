@@ -115,6 +115,22 @@ service itself internal.
 | `anim=1` | With `wlk`, `wav` or `spk`: an animated PNG (12 frames a second, the client's rate). |
 | `format=gif`, `bg=RRGGBB` | As for furni. |
 
+### Bots: `GET /avatar?figure=<bot figure>&casts=<the room's casts>`
+
+Public room bots carry their look in the client's bot format, `part=model/colour` joined with `&`
+(`sd=001/0&hr=010/224,186,120&ch=202/139,24,32&...`; a colour is `r,g,b`, a palette number, or nothing), and wear parts
+from their room's own casts (Kepler: `rooms.ccts`, e.g. the kitchen's chef hat is hair 799 in `hh_room_kitchen`). Pass
+the figure URL-encoded and the room's casts in `casts` (comma separated, read from `ROOM_CAST_PATH`): the picture uses
+the room's parts and the room's zoom (`#factorx` of its `.room` layout: most public rooms draw people at 32 px) unless
+`size` says otherwise. `raw=1` gives the client's own canvas (32x62 / 64x106), which keeps tall hats the website frame
+cuts.
+
+### `GET /parts?casts=<the room's casts>[&size=b|s]`
+
+What a room can dress a bot in, for an editor: `{ size, zoom, parts: { hr: [{ model, room, players }], ch: [...] } }`,
+every part model drawable at that zoom; `room` = only in the room's casts, `players` = in the figure data (players can
+wear it). Room-only parts come first.
+
 ### `GET /health`
 
 `ok <n> casts`.
@@ -135,6 +151,7 @@ cast for that furni, or a figure it doesn't handle), `502` when a cast can't be 
 | `PEOPLE_CASTS` | `dcr/hh_people_1.cct,dcr/hh_people_2.cct,dcr/hh_people_small_1.cct,dcr/hh_people_small_2.cct` | Comma separated. |
 | `HUMAN_CAST` | `dcr/hh_human.cct` | |
 | `FIGURE_DATA` | `gamedata/figuredata.txt` | |
+| `ROOM_CAST_PATH` | `dcr` | Folder of the room casts a bot's `casts=` names. |
 | `MAX_CASTS` | `400` | Parsed casts kept in memory (least recently used out). Missing casts are remembered for 10 minutes, the Habbo casts reloaded every hour. |
 
 ## How it draws

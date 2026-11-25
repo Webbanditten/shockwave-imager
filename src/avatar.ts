@@ -92,6 +92,86 @@ function model3(m: string) {
   return m.length === 1 ? '00' + m : m.length === 2 ? '0' + m : m;
 }
 
+const BOT_PARTS = ['hr', 'hd', 'ey', 'fc', 'bd', 'lh', 'rh', 'ch', 'ls', 'rs', 'lg', 'sh'];
+
+/** A bot's colour as the client reads it: "r,g,b" (anything brighter than 238 a channel on average is EEEEEE), a palette
+ *  number (paletteIndex, the Windows system palette), or nothing / 0 = EEEEEE. */
+function botColor(text: string): number {
+  const items = text.split(',').map((x) => x.trim());
+  if (items.length === 1) {
+    const n = parseInt(items[0], 10);
+    if (!n) return 0xeeeeee;
+    return systemWinPalette().colors[n & 255] ?? 0xeeeeee;
+  }
+  if (items.length !== 3) return 0xeeeeee;
+  const [r, g, b] = items.map((x) => Number(x));
+  if (![r, g, b].every((v) => Number.isFinite(v) && v >= 0 && v <= 255)) return 0xeeeeee;
+  if (r + g + b > 238 * 3) return 0xeeeeee;
+  return (r << 16) | (g << 8) | b;
+}
+
+/** A bot's figure (Figure System Class parseFigure, class "bot"): `part=model/colour` joined with `&`, e.g.
+ *  `sd=001/0&hr=010/224,186,120&hd=002/255,204,153&...`. Every part the client draws gets model 001 and EEEEEE when the
+ *  figure leaves it out. Null when it isn't a bot figure. */
+export function parseBotFigure(figure: string): Map<string, PartModel> | null {
+  if (!figure.includes('=')) return null;
+  const out = new Map<string, PartModel>();
+  for (const item of figure.split('&')) {
+    const eq = item.indexOf('=');
+    if (eq <= 0) continue;
+    const part = item.slice(0, eq).trim().toLowerCase();
+    const [model = '', colour = ''] = item.slice(eq + 1).split('/');
+    out.set(part, { model: model.trim(), color: botColor(colour.split(/\r?\n/)[0]) });
+  }
+  for (const part of BOT_PARTS) if (!out.has(part) || !out.get(part)!.model) out.set(part, { model: '001', color: out.get(part)?.color ?? 0xeeeeee });
+  return out;
+}
+
+/** The zoom a room's casts draw people at: its .room layout's #factorx (32 for most public rooms), else undefined. */
+export function roomZoom(casts: FurniCast[]): 32 | 64 | undefined {
+  for (const cast of casts) {
+    for (const name of cast.names.keys()) {
+      if (!name.endsWith('.room')) continue;
+      const m = /#factorx\s*:\s*(\d+)/i.exec(fieldText(cast, name) ?? '');
+      if (m) return Number(m[1]) === 32 ? 32 : 64;
+    }
+  }
+  return undefined;
+}
+
+export interface PartChoice {
+  model: string;
+  /** only in the room's casts (not in the people casts) */
+  room: boolean;
+  /** in the figure data: players can wear it */
+  players: boolean;
+}
+
+/** Every part model the assets can draw standing at a zoom (h = 64 px, sh = 32 px), per part: what a bot in that room
+ *  can wear. `roomCasts` marks the room's own; the figure data marks the players'. */
+export function partChoices(people: PeopleAssets, roomCasts: FurniCast[], data: FigureData | null, small: boolean): Record<string, PartChoice[]> {
+  const prefix = small ? 'sh' : 'h';
+  const re = new RegExp(`^${prefix}_std_([a-z]{2,3})_(\\d{3})_`);
+  const roomNames = new Set<string>();
+  for (const cast of roomCasts) for (const n of cast.names.keys()) roomNames.add(n);
+  const players = new Set<string>();
+  if (data) for (const sex of ['M', 'F'] as Sex[]) for (const [, sets] of data.parts[sex]) for (const set of sets) for (const [part, model] of set.p) players.add(`${part}=${model3(model)}`);
+  const found = new Map<string, Map<string, PartChoice>>();
+  for (const name of people.names.keys()) {
+    const m = re.exec(name);
+    if (!m) continue;
+    const [, part, model] = m;
+    let models = found.get(part);
+    if (!models) found.set(part, (models = new Map()));
+    const room = roomNames.has(name);
+    const prev = models.get(model);
+    models.set(model, { model, room: (prev?.room ?? true) && room, players: players.has(`${part}=${model}`) });
+  }
+  const out: Record<string, PartChoice[]> = {};
+  for (const [part, models] of found) out[part] = [...models.values()].sort((a, b) => Number(b.room) - Number(a.room) || a.model.localeCompare(b.model));
+  return out;
+}
+
 /** The sex whose figure data knows more of the figure's sets (the CMS's URLs carry only the figure). */
 export function guessSex(data: FigureData, figure: string): Sex {
   let m = 0, f = 0;
@@ -161,8 +241,31 @@ export class PeopleAssets {
   readonly dances = new Map<number, Map<string, DanceFrame[]>>();
 
   constructor(casts: Uint8Array[], humanCast?: Uint8Array) {
-    for (const bytes of casts) {
-      const cast = loadCast(bytes);
+    for (const bytes of casts) this.index(loadCast(bytes));
+    if (humanCast) {
+      const human = loadCast(humanCast);
+      for (const line of (fieldText(human, 'variable.index') ?? '').split(/[\r\n]+/)) {
+        const m = /^\s*([^#=\s][^=]*?)\s*=\s*(.*?)\s*$/.exec(line);
+        if (m) this.variables.set(m[1], m[2]);
+      }
+      for (let n = 1; n <= 4; n++) {
+        const dance = parseDance(fieldText(human, `dance.${n}`));
+        if (dance.size) this.dances.set(n, dance);
+      }
+    }
+  }
+
+  /** These assets plus a room's casts, indexed after the people casts as the client loads them when it enters the
+   *  room (a public room's bots wear the room's own parts: the kitchen's hair 799, the Space Cafe's 888, ...). */
+  withCasts(casts: FurniCast[]): PeopleAssets {
+    const out = Object.create(PeopleAssets.prototype) as PeopleAssets;
+    Object.assign(out, { names: new Map(this.names), variables: this.variables, dances: this.dances });
+    for (const cast of casts) out.index(cast);
+    return out;
+  }
+
+  private index(cast: FurniCast) {
+    {
       for (const slot of cast.file.members) {
         const name = slot.member.name;
         if (name) this.names.set(name.toLowerCase(), { cast, slot, flip: false });
@@ -176,17 +279,6 @@ export class PeopleAssets {
         const entry = this.names.get(target.toLowerCase());
         if (!entry || entry.flip) continue;
         this.names.set(line.slice(0, eq).trim().toLowerCase(), { ...entry, flip });
-      }
-    }
-    if (humanCast) {
-      const human = loadCast(humanCast);
-      for (const line of (fieldText(human, 'variable.index') ?? '').split(/[\r\n]+/)) {
-        const m = /^\s*([^#=\s][^=]*?)\s*=\s*(.*?)\s*$/.exec(line);
-        if (m) this.variables.set(m[1], m[2]);
-      }
-      for (let n = 1; n <= 4; n++) {
-        const dance = parseDance(fieldText(human, `dance.${n}`));
-        if (dance.size) this.dances.set(n, dance);
       }
     }
   }
