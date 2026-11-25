@@ -277,20 +277,30 @@ segmented('habbo-format', 'png', (v) => ((habbo.format = v), drawHabbo()));
 
 // ---- furni -------------------------------------------------------------------------------------------------------
 
-const furni = { sprite: 'chair_norja', direction: 2, wall: 'leftwall', state: '1', useColour: false, colour: '#d33a2c', shadow: false, small: false, icon: false, anim: true, format: 'png' };
+// The dragon lamp's colours, as the hotel sells them (items_definitions: rare_dragonlamp*<n> and its part colours).
+const DRAGONS: [number, string, string][] = [
+  [0, 'Red', '#FA2D00'], [1, 'Dark blue', '#3470FF'], [2, 'Jade', '#02BB70'], [3, 'Silver', '#FFFFFF'], [4, 'Black', '#3E3D40'],
+  [6, 'Gold', '#FFBC00'], [7, 'Light blue', '#83AEFF'], [8, 'Bronze', '#FF5F01'], [9, 'Purple', '#B357FF'],
+];
+const dragonColours = (c: string) => ['#FFFFFF', c, c, '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF'].join(',');
+const ANIMATED = new Set(['hc_lmp', 'rare_dragonlamp']);
+
+const furni = { sprite: 'rare_dragonlamp', dragon: 0, direction: 2, wall: 'leftwall', state: '1', useColour: false, colour: '#d33a2c', shadow: false, small: false, icon: false, anim: true, format: 'png' };
 
 function furniParams() {
-  const q = new URLSearchParams({ sprite: furni.sprite });
+  const dragon = DRAGONS[furni.dragon]!;
+  const q = new URLSearchParams({ sprite: furni.sprite === 'rare_dragonlamp' ? `rare_dragonlamp*${dragon[0]}` : furni.sprite });
+  if (furni.sprite === 'rare_dragonlamp') q.set('colors', dragonColours(dragon[2]));
   const poster = furni.sprite.startsWith('poster');
   if (poster) {
     if (furni.wall !== 'leftwall') q.set('wall', furni.wall);
   } else q.set('direction', String(furni.direction));
-  if (furni.sprite === 'hc_lmp') q.set('state', furni.state);
+  if (ANIMATED.has(furni.sprite)) q.set('state', furni.state);
   if (furni.useColour && furni.sprite === 'chair_norja') q.set('colors', furni.colour.toUpperCase());
   if (furni.shadow && !poster) q.set('shadow', '1');
   if (furni.small) q.set('small', '1');
   if (furni.icon) q.set('icon', '1');
-  if (furni.anim && furni.sprite === 'hc_lmp') q.set('anim', '1');
+  if (furni.anim && ANIMATED.has(furni.sprite)) q.set('anim', '1');
   if (furni.format === 'gif') q.set('format', 'gif');
   return q;
 }
@@ -299,7 +309,8 @@ function drawFurni() {
   const poster = furni.sprite.startsWith('poster');
   $('furni-dir-row').hidden = poster;
   $('wall-row').hidden = !poster;
-  $('state-row').hidden = furni.sprite !== 'hc_lmp';
+  $('state-row').hidden = !ANIMATED.has(furni.sprite);
+  $('dragon-row').hidden = furni.sprite !== 'rare_dragonlamp';
   $('colour-row').hidden = furni.sprite !== 'chair_norja';
   const q = furniParams();
   $('furni-url').textContent = requestLine('/furni', q);
@@ -307,6 +318,28 @@ function drawFurni() {
 }
 
 segmented('furni', furni.sprite, (v) => ((furni.sprite = v), drawFurni()));
+
+function buildDragonSwatches() {
+  const box = $('dragon');
+  box.replaceChildren();
+  DRAGONS.forEach(([, name, colour], i) => {
+    const s = document.createElement('button');
+    s.type = 'button';
+    s.className = 'swatch';
+    s.style.background = colour;
+    s.title = name;
+    s.setAttribute('aria-label', `${name} dragon`);
+    s.setAttribute('aria-pressed', String(furni.dragon === i));
+    s.onclick = () => {
+      furni.dragon = i;
+      buildDragonSwatches();
+      drawFurni();
+    };
+    box.append(s);
+  });
+  $('dragon-name').textContent = DRAGONS[furni.dragon]![1];
+}
+buildDragonSwatches();
 segmented('wall', furni.wall, (v) => ((furni.wall = v), drawFurni()));
 segmented('state', furni.state, (v) => ((furni.state = v), drawFurni()));
 segmented('furni-format', 'png', (v) => ((furni.format = v), drawFurni()));
@@ -326,6 +359,8 @@ async function showcase() {
     const sex: Sex = Math.random() < 0.5 ? 'M' : 'F';
     items.push(['/avatar', new URLSearchParams({ figure: figureOf(sex, randomPicks(sex)), sex, dance: String(dance), direction: String([2, 3, 4, 2][dance - 1]) })]);
   }
+  const [n, , colour] = DRAGONS[randomIndex(DRAGONS.length)]!;
+  items.push(['/furni', new URLSearchParams({ sprite: `rare_dragonlamp*${n}`, colors: dragonColours(colour), state: '1', anim: '1' })]);
   items.push(['/furni', new URLSearchParams({ sprite: 'hc_lmp', state: '1', anim: '1' })]);
   const sex: Sex = Math.random() < 0.5 ? 'M' : 'F';
   items.push(['/avatar', new URLSearchParams({ figure: figureOf(sex, randomPicks(sex)), sex, action: 'wav', anim: '1', direction: '4' })]);

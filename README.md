@@ -25,8 +25,8 @@ work too.
 The service reads casts from your hotel's asset host (a URL) or from a folder. It contains **no Habbo graphics**: it
 reads every bitmap, alias, ink and animation table from your casts at runtime.
 
-`samples/` holds what the service needs to draw Habbos (the people casts, `hh_human` and the figure data) and three
-furni casts (`chair_norja`, `hc_lmp`, `poster_20`), so `ASSETS=samples` works out of the box and the tests have something
+`samples/` holds what the service needs to draw Habbos (the people casts, `hh_human` and the figure data) and four
+furni casts (`rare_dragonlamp`, `chair_norja`, `hc_lmp`, `poster_20`), so `ASSETS=samples` works out of the box and the tests have something
 to draw. The rest of the furni (your `hof_furni` folder) comes from your own hotel.
 
 Paths, relative to `ASSETS` (each one can be changed, see [Configuration](#configuration)):
@@ -47,7 +47,7 @@ With Docker (the image, built from `main`, includes the samples):
 docker run --rm -p 8096:8096 -e ASSETS=/app/samples ghcr.io/webbanditten/shockwave-imager
 # or build it yourself: docker build -t shockwave-imager .
 # http://localhost:8096/furni?sprite=chair_norja&direction=4
-# http://localhost:8096/furni?sprite=hc_lmp&anim=1
+# http://localhost:8096/furni?sprite=rare_dragonlamp*6&colors=%23FFFFFF,%23FFBC00,%23FFBC00&anim=1
 # http://localhost:8096/avatar?figure=1500118001275343000521525&dance=2
 ```
 

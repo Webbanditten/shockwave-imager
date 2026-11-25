@@ -52,6 +52,16 @@ describe('furni', () => {
     expect(pixels(red.body)[2]).not.toBe(pixels(plain.body)[2]);
   });
 
+  const dragon = 'sprite=rare_dragonlamp*0&colors=%23FFFFFF,%23FA2D00,%23FA2D00,%23FFFFFF,%23FFFFFF,%23FFFFFF,%23FFFFFF';
+
+  it('the dragon lamp: still when off, its flame animated when lit', async () => {
+    const off = await get(`/furni?${dragon}&state=0`);
+    expect(pixels(off.body)).toEqual([60, 76, 'c9ac4f39dffbdf02']);
+    const lit = await get(`/furni?${dragon}&anim=1`);
+    expect(lit.status).toBe(200);
+    expect(lit.body.includes(Buffer.from('acTL'))).toBe(true);
+  });
+
   it('a lit lamp is an animated PNG', async () => {
     const res = await get('/furni?sprite=hc_lmp&anim=1');
     expect(res.status).toBe(200);
