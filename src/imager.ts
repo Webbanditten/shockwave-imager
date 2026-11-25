@@ -138,6 +138,15 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     return still(websiteAvatar(assets, parsed, options), q);
   }
 
+  /**
+   * The cast with the 32 px pictures. In a small room the client loads the class as "s_<class>", which is its own cast
+   * (hh_furni_xx_s_<class>.cct, members named s_<...>); a class without one (e.g. in a shared cast) may carry its s_
+   * members in the large cast.
+   */
+  async function smallCast(file: string, large: FurniCast): Promise<FurniCast> {
+    return (await getCast(`${furniPath}/hh_furni_xx_s_${file}.cct`)) ?? large;
+  }
+
   async function renderFurni(q: URLSearchParams): Promise<Picture | null | 'bad'> {
     const sprite = (q.get('sprite') ?? '').trim();
     if (!sprite || sprite.length > 100 || !/^[A-Za-z0-9_.* -]+$/.test(sprite)) return 'bad';
@@ -150,16 +159,22 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
       const cast = await getCast(`${furniPath}/hh_furni_xx_poster_${poster[1]}.cct`);
       if (!cast) return null;
       // An icon the cast doesn't have falls back to the small picture, as for furni below.
-      return (icon && renderIcon(cast, `poster ${poster[1]}`)) || renderPoster(cast, poster[1], { wall, small: small || icon });
+      const drawn = icon ? renderIcon(cast, `poster ${poster[1]}`) : null;
+      if (drawn) return drawn;
+      const posterCast = small || icon ? await smallCast(`poster_${poster[1]}`, cast) : cast;
+      return renderPoster(posterCast, poster[1], { wall, small: small || icon });
     }
-    const cast = await castFor(sprite.split('*')[0]!);
-    if (!cast) return null;
+    const cls = sprite.split('*')[0]!;
+    const large = await castFor(cls);
+    if (!large) return null;
     const colors = q.get('colors') ?? undefined;
     if (icon) {
       // No <class>_small icon member (some posters and newer furni): the small room picture instead, still.
-      const drawn = renderIcon(cast, sprite, colors);
+      const drawn = renderIcon(large, sprite, colors);
       if (drawn) return drawn;
     }
+    const smallPicture = small || icon;
+    const cast = smallPicture ? await smallCast(cls, large) : large;
     const direction = Math.max(0, Math.min(7, Number(q.get('direction') ?? 2) || 0));
     if (flag(q.get('anim')) && !icon) {
       // Without a state: the first of the first two states (off/on) that keeps moving: a lamp lit, the smoke machine on,
@@ -170,7 +185,6 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
         if (animated && (animated.loops || !auto)) return moving(animated.width, animated.height, animated.rgbaFrames, animated.fps, animated.plays, q, animated.png);
       }
     }
-    const smallPicture = small || icon;
     return (
       renderFloorFurni(cast, sprite, { direction, state, colors, shadow: flag(q.get('shadow')), small: smallPicture }) ??
       renderWallItem(cast, sprite, { wall, state, small: smallPicture }) ??

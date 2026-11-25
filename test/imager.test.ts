@@ -39,6 +39,12 @@ describe('furni', () => {
     ['sprite=chair_norja&icon=1', 23, 30, '25ab568a0305fe0b'],
     ['sprite=hc_lmp&state=1', 62, 94, '022f8d16cdedc763'],
     ['sprite=poster20&wall=rightwall', 52, 89, 'd124d93f370e298a'],
+    // a hotel colour: the chair's seat and back (layers c and d)
+    ['sprite=chair_norja*6&colors=%23FFFFFF,%23FFFFFF,%235EAAF8,%235EAAF8', 47, 61, '2c6c05da917ce11f'],
+    // 32 px: from the class's own hh_furni_xx_s_<class> cast
+    ['sprite=chair_norja&small=1&direction=4&shadow=1', 28, 31, 'b8ad5f8df38f00e8'],
+    ['sprite=rare_dragonlamp*0&colors=%23FFFFFF,%23FA2D00,%23FA2D00,%23FFFFFF,%23FFFFFF,%23FFFFFF,%23FFFFFF&small=1&state=0', 30, 38, 'a52bccc3223317a6'],
+    ['sprite=poster20&small=1&wall=rightwall', 27, 46, 'feef5433e150ba7a'],
   ])('%s', async (query, width, height, hash) => {
     const res = await get(`/furni?${query}`);
     expect(res.status).toBe(200);
@@ -60,6 +66,8 @@ describe('furni', () => {
     const lit = await get(`/furni?${dragon}&anim=1`);
     expect(lit.status).toBe(200);
     expect(lit.body.includes(Buffer.from('acTL'))).toBe(true);
+    const small = await get(`/furni?${dragon}&anim=1&small=1`);
+    expect(small.body.includes(Buffer.from('acTL'))).toBe(true);
   });
 
   it('a lit lamp is an animated PNG', async () => {

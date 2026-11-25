@@ -277,26 +277,40 @@ segmented('habbo-format', 'png', (v) => ((habbo.format = v), drawHabbo()));
 
 // ---- furni -------------------------------------------------------------------------------------------------------
 
-// The dragon lamp's colours, as the hotel sells them (items_definitions: rare_dragonlamp*<n> and its part colours).
-const DRAGONS: [number, string, string][] = [
-  [0, 'Red', '#FA2D00'], [1, 'Dark blue', '#3470FF'], [2, 'Jade', '#02BB70'], [3, 'Silver', '#FFFFFF'], [4, 'Black', '#3E3D40'],
-  [6, 'Gold', '#FFBC00'], [7, 'Light blue', '#83AEFF'], [8, 'Bronze', '#FF5F01'], [9, 'Purple', '#B357FF'],
-];
-const dragonColours = (c: string) => ['#FFFFFF', c, c, '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF'].join(',');
+// Colour variants as the hotel sells them (items_definitions: the sprite <class>*<n> and its part colours, one per
+// layer; the chair colours its seat and back, layers c and d, the dragon its body, b and c).
+interface Variant { sprite: string; name: string; colors: string; swatch: string }
+const variant = (cls: string, n: number | null, name: string, colors: string[]): Variant => ({
+  sprite: n === null ? cls : `${cls}*${n}`, name, colors: colors.join(','), swatch: colors.find((c) => c !== '#FFFFFF') ?? '#FFFFFF',
+});
+const dragon = (n: number, name: string, c: string) => variant('rare_dragonlamp', n, name, ['#FFFFFF', c, c, '#FFFFFF', '#FFFFFF', '#FFFFFF', '#FFFFFF']);
+const chair = (n: number | null, name: string, c: string) => variant('chair_norja', n, name, ['#FFFFFF', '#FFFFFF', c, c]);
+const VARIANTS: Record<string, Variant[]> = {
+  rare_dragonlamp: [
+    dragon(0, 'Red', '#FA2D00'), dragon(1, 'Dark blue', '#3470FF'), dragon(2, 'Jade', '#02BB70'), dragon(3, 'Silver', '#FFFFFF'),
+    dragon(4, 'Black', '#3E3D40'), dragon(6, 'Gold', '#FFBC00'), dragon(7, 'Light blue', '#83AEFF'), dragon(8, 'Bronze', '#FF5F01'),
+    dragon(9, 'Purple', '#B357FF'),
+  ],
+  chair_norja: [
+    chair(null, 'Beige', '#F7EBBC'), chair(2, 'Black', '#525252'), chair(3, 'White', '#FFFFFF'), chair(4, 'Light blue', '#ABD0D2'),
+    chair(5, 'Pink', '#EE7EA4'), chair(6, 'Blue', '#5EAAF8'), chair(7, 'Green', '#7CB135'), chair(8, 'Yellow', '#FFD837'),
+    chair(9, 'Red', '#E14218'),
+  ],
+};
 const ANIMATED = new Set(['hc_lmp', 'rare_dragonlamp']);
 
-const furni = { sprite: 'rare_dragonlamp', dragon: 0, direction: 2, wall: 'leftwall', state: '1', useColour: false, colour: '#d33a2c', shadow: false, small: false, icon: false, anim: true, format: 'png' };
+const furni = { sprite: 'rare_dragonlamp', variant: { rare_dragonlamp: 0, chair_norja: 0 } as Record<string, number>, direction: 2, wall: 'leftwall', state: '1', shadow: false, small: false, icon: false, anim: true, format: 'png' };
+const currentVariant = () => VARIANTS[furni.sprite]?.[furni.variant[furni.sprite] ?? 0];
 
 function furniParams() {
-  const dragon = DRAGONS[furni.dragon]!;
-  const q = new URLSearchParams({ sprite: furni.sprite === 'rare_dragonlamp' ? `rare_dragonlamp*${dragon[0]}` : furni.sprite });
-  if (furni.sprite === 'rare_dragonlamp') q.set('colors', dragonColours(dragon[2]));
+  const v = currentVariant();
+  const q = new URLSearchParams({ sprite: v?.sprite ?? furni.sprite });
+  if (v) q.set('colors', v.colors);
   const poster = furni.sprite.startsWith('poster');
   if (poster) {
     if (furni.wall !== 'leftwall') q.set('wall', furni.wall);
   } else q.set('direction', String(furni.direction));
   if (ANIMATED.has(furni.sprite)) q.set('state', furni.state);
-  if (furni.useColour && furni.sprite === 'chair_norja') q.set('colors', furni.colour.toUpperCase());
   if (furni.shadow && !poster) q.set('shadow', '1');
   if (furni.small) q.set('small', '1');
   if (furni.icon) q.set('icon', '1');
@@ -310,8 +324,8 @@ function drawFurni() {
   $('furni-dir-row').hidden = poster;
   $('wall-row').hidden = !poster;
   $('state-row').hidden = !ANIMATED.has(furni.sprite);
-  $('dragon-row').hidden = furni.sprite !== 'rare_dragonlamp';
-  $('colour-row').hidden = furni.sprite !== 'chair_norja';
+  $('variant-row').hidden = !VARIANTS[furni.sprite];
+  buildVariantSwatches();
   const q = furniParams();
   $('furni-url').textContent = requestLine('/furni', q);
   void show($<HTMLImageElement>('furni-img'), '/furni', q);
@@ -319,34 +333,31 @@ function drawFurni() {
 
 segmented('furni', furni.sprite, (v) => ((furni.sprite = v), drawFurni()));
 
-function buildDragonSwatches() {
-  const box = $('dragon');
+function buildVariantSwatches() {
+  const box = $('variants');
   box.replaceChildren();
-  DRAGONS.forEach(([, name, colour], i) => {
+  const list = VARIANTS[furni.sprite] ?? [];
+  list.forEach((v, i) => {
     const s = document.createElement('button');
     s.type = 'button';
     s.className = 'swatch';
-    s.style.background = colour;
-    s.title = name;
-    s.setAttribute('aria-label', `${name} dragon`);
-    s.setAttribute('aria-pressed', String(furni.dragon === i));
+    s.style.background = v.swatch;
+    s.title = v.name;
+    s.setAttribute('aria-label', v.name);
+    s.setAttribute('aria-pressed', String((furni.variant[furni.sprite] ?? 0) === i));
     s.onclick = () => {
-      furni.dragon = i;
-      buildDragonSwatches();
+      furni.variant[furni.sprite] = i;
       drawFurni();
     };
     box.append(s);
   });
-  $('dragon-name').textContent = DRAGONS[furni.dragon]![1];
+  $('variant-name').textContent = currentVariant()?.name ?? '';
 }
-buildDragonSwatches();
 segmented('wall', furni.wall, (v) => ((furni.wall = v), drawFurni()));
 segmented('state', furni.state, (v) => ((furni.state = v), drawFurni()));
 segmented('furni-format', 'png', (v) => ((furni.format = v), drawFurni()));
 $('furni-left').onclick = () => ((furni.direction = turn(furni.direction + 2)), drawFurni());
 $('furni-right').onclick = () => ((furni.direction = turn(furni.direction - 2)), drawFurni());
-$<HTMLInputElement>('use-colour').onchange = (e) => ((furni.useColour = (e.target as HTMLInputElement).checked), drawFurni());
-$<HTMLInputElement>('colour').oninput = (e) => ((furni.colour = (e.target as HTMLInputElement).value), (furni.useColour = true), (($<HTMLInputElement>('use-colour')).checked = true), drawFurni());
 for (const key of ['shadow', 'small', 'icon'] as const) $<HTMLInputElement>(key).onchange = (e) => ((furni[key] = (e.target as HTMLInputElement).checked), drawFurni());
 $<HTMLInputElement>('furni-anim').onchange = (e) => ((furni.anim = (e.target as HTMLInputElement).checked), drawFurni());
 
@@ -359,12 +370,14 @@ async function showcase() {
     const sex: Sex = Math.random() < 0.5 ? 'M' : 'F';
     items.push(['/avatar', new URLSearchParams({ figure: figureOf(sex, randomPicks(sex)), sex, dance: String(dance), direction: String([2, 3, 4, 2][dance - 1]) })]);
   }
-  const [n, , colour] = DRAGONS[randomIndex(DRAGONS.length)]!;
-  items.push(['/furni', new URLSearchParams({ sprite: `rare_dragonlamp*${n}`, colors: dragonColours(colour), state: '1', anim: '1' })]);
+  const pick = (list: Variant[]) => list[randomIndex(list.length)]!;
+  const d = pick(VARIANTS.rare_dragonlamp!);
+  items.push(['/furni', new URLSearchParams({ sprite: d.sprite, colors: d.colors, state: '1', anim: '1' })]);
   items.push(['/furni', new URLSearchParams({ sprite: 'hc_lmp', state: '1', anim: '1' })]);
   const sex: Sex = Math.random() < 0.5 ? 'M' : 'F';
   items.push(['/avatar', new URLSearchParams({ figure: figureOf(sex, randomPicks(sex)), sex, action: 'wav', anim: '1', direction: '4' })]);
-  items.push(['/furni', new URLSearchParams({ sprite: 'chair_norja', direction: '4', colors: '#3B7AC0' })]);
+  const c = pick(VARIANTS.chair_norja!);
+  items.push(['/furni', new URLSearchParams({ sprite: c.sprite, colors: c.colors, direction: '4' })]);
   const urls = await Promise.all(items.map(async ([path, q]) => [await pictureUrl(await renderer.render(path, q), q), requestLine(path, q)] as const));
   strip.querySelectorAll('img').forEach((img) => URL.revokeObjectURL(img.src));
   strip.replaceChildren();

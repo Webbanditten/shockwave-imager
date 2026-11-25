@@ -26,7 +26,7 @@ The service reads casts from your hotel's asset host (a URL) or from a folder. I
 reads every bitmap, alias, ink and animation table from your casts at runtime.
 
 `samples/` holds what the service needs to draw Habbos (the people casts, `hh_human` and the figure data) and four
-furni casts (`rare_dragonlamp`, `chair_norja`, `hc_lmp`, `poster_20`), so `ASSETS=samples` works out of the box and the tests have something
+furni (`rare_dragonlamp`, `chair_norja`, `hc_lmp`, `poster_20`, each with its 32 px cast), so `ASSETS=samples` works out of the box and the tests have something
 to draw. The rest of the furni (your `hof_furni` folder) comes from your own hotel.
 
 Paths, relative to `ASSETS` (each one can be changed, see [Configuration](#configuration)):
@@ -34,6 +34,7 @@ Paths, relative to `ASSETS` (each one can be changed, see [Configuration](#confi
 | What | Default path | Needed for |
 |---|---|---|
 | Furni casts | `hof_furni/hh_furni_xx_<class>.cct`, posters `hof_furni/hh_furni_xx_poster_<n>.cct` | `/furni` |
+| 32 px furni casts | `hof_furni/hh_furni_xx_s_<class>.cct`, `hof_furni/hh_furni_xx_s_poster_<n>.cct` | `small=1` |
 | Shared casts searched for classes without a cast of their own (e.g. pet items) | `dcr/hh_pets.cct` | optional |
 | Habbo casts | `dcr/hh_people_1.cct`, `dcr/hh_people_2.cct`, `dcr/hh_people_small_1.cct`, `dcr/hh_people_small_2.cct` | `/avatar` |
 | `hh_human` (hand items, dances) | `dcr/hh_human.cct` | `/avatar` |
@@ -87,11 +88,11 @@ service itself internal.
 | Parameter | Meaning |
 |---|---|
 | `sprite` | The furni class, optionally with its colour: `chair_norja`, `chair_norja*2`. Posters: `poster20` or `poster 20`. |
-| `colors` | Part colours, comma separated, one per layer: `#RRGGBB` or a palette index (`items_definitions.colour` in Kepler-based servers). |
+| `colors` | Part colours, comma separated, one per layer (a, b, c, ...): `#RRGGBB` or a palette index. Pass the furni's own list (`items_definitions.colour` in Kepler-based servers): `chair_norja*6` is `#FFFFFF,#FFFFFF,#5EAAF8,#5EAAF8` (seat and back blue). |
 | `direction` | 0-7 (default 2). |
 | `state` | The furni's state value minus 1 (0 = first state; a lamp: 0 off, 1 on). |
 | `shadow=1` | Draw the shadow. |
-| `small=1` | The 32 px room size. |
+| `small=1` | The 32 px room size, from the class's `hh_furni_xx_s_<class>.cct` (the client's asset `s_<class>`), else the large cast's `s_` members. |
 | `icon=1` | The catalogue/hand icon (falls back to the small picture when the cast has none). |
 | `wall` | `leftwall` (default) or `rightwall`, for wall items and posters. |
 | `anim=1` | An animated PNG when the furni moves in that state. Without `state`, the first of states 0 and 1 that keeps moving (a lamp lit). Still furni stay a PNG. |
