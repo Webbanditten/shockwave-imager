@@ -131,6 +131,12 @@ What a room can dress a bot in, for an editor: `{ size, zoom, parts: { hr: [{ mo
 every part model drawable at that zoom; `room` = only in the room's casts, `players` = in the figure data (players can
 wear it). Room-only parts come first.
 
+`colours` has the colours players pick from per part (the figure data's), for swatches.
+
+### `GET /convert?figure=<25 digits>[&sex=M|F]`
+
+A player's look in the bot format, `{ figure, sex }`, to start a bot from a Habbo.
+
 ### `GET /health`
 
 `ok <n> casts`.

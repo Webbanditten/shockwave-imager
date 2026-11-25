@@ -57,10 +57,10 @@ export function createImager(config: ImagerConfig) {
       res.writeHead(200, { 'Content-Type': 'text/plain' }).end(`ok ${renderer.castCount()} casts`);
       return;
     }
-    if (url.pathname === '/parts' && req.method === 'GET') {
+    if ((url.pathname === '/parts' || url.pathname === '/convert') && req.method === 'GET') {
       try {
-        const result = await renderer.parts(url.searchParams);
-        if (result === 'bad') return void res.writeHead(400, { 'Content-Type': 'text/plain' }).end('bad casts');
+        const result = url.pathname === '/parts' ? await renderer.parts(url.searchParams) : await renderer.convert(url.searchParams);
+        if (result === 'bad') return void res.writeHead(400, { 'Content-Type': 'text/plain' }).end(url.pathname === '/parts' ? 'bad casts' : 'bad figure');
         res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' }).end(JSON.stringify(result));
       } catch (e) {
         console.error(url.pathname + url.search, (e as Error).message);

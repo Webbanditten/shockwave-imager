@@ -156,13 +156,29 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     return still(websiteAvatar(people, parsed, options), q);
   }
 
-  /** What a room can dress a bot in: GET /parts?casts=<the room's casts>[&size=b|s] -> { size, parts: { hr: [...] } }. */
+  /** What a room can dress a bot in: GET /parts?casts=<the room's casts>[&size=b|s] -> { size, zoom, parts: { hr: [...] },
+   *  colours: { hr: ['#RRGGBB', ...] } } (the colours players pick from, per part: the figure data's). */
   async function parts(q: URLSearchParams): Promise<object | 'bad'> {
     const casts = await roomCasts(q);
     if (casts === 'bad') return 'bad';
     const { assets, data } = await getPeople();
     const size = q.get('size') === 's' || q.get('size') === 'b' ? q.get('size')! : roomZoom(casts) === 32 ? 's' : 'b';
-    return { size, zoom: roomZoom(casts) ?? null, parts: partChoices(casts.length ? assets.withCasts(casts) : assets, casts, data, size === 's') };
+    return { size, zoom: roomZoom(casts) ?? null, parts: partChoices(casts.length ? assets.withCasts(casts) : assets, casts, data, size === 's'), colours: playerColours(data) };
+  }
+
+  /** A player's 25-digit look in the bot format: GET /convert?figure=<25 digits>[&sex=M|F] -> { figure, sex }. */
+  async function convert(q: URLSearchParams): Promise<object | 'bad'> {
+    const figure = (q.get('figure') ?? '').trim();
+    if (!/^\d{25}$/.test(figure)) return 'bad';
+    const { data } = await getPeople();
+    const sexParam = (q.get('sex') ?? '').toUpperCase();
+    const sex = sexParam.startsWith('F') ? 'F' : sexParam.startsWith('M') ? 'M' : guessSex(data, figure);
+    const parsed = parseFigure(data, figure, sex);
+    if (!parsed) return 'bad';
+    const rgb = (c: number) => `${(c >> 16) & 255},${(c >> 8) & 255},${c & 255}`;
+    const order = ['hr', 'hd', 'ey', 'fc', 'bd', 'lh', 'rh', 'ch', 'ls', 'rs', 'lg', 'sh'];
+    const items = ['sd=001/0', ...order.filter((p) => parsed.has(p)).map((p) => `${p}=${parsed.get(p)!.model}/${rgb(parsed.get(p)!.color)}`)];
+    return { figure: items.join('&'), sex };
   }
 
   async function renderHabbo(q: URLSearchParams): Promise<Picture | null | 'bad'> {
@@ -247,7 +263,23 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     return pathname === '/avatar' ? renderHabbo(q) : renderFurni(q);
   }
 
-  return { render, parts, castCount: () => casts.size, figureData: async () => (await getPeople()).data };
+  return { render, parts, convert, castCount: () => casts.size, figureData: async () => (await getPeople()).data };
+}
+
+/** The colours the figure data offers per part (both sexes): skin for the head parts, the top's for the sleeves. */
+function playerColours(data: FigureData): Record<string, string[]> {
+  const of = (main: string) => {
+    const out: string[] = [];
+    for (const sex of ['M', 'F'] as const)
+      for (const set of data.parts[sex].get(main) ?? [])
+        for (const c of set.c) {
+          const hex = '#' + String(Array.isArray(c) ? c[0] : c).toUpperCase();
+          if (/^#[0-9A-F]{6}$/.test(hex) && !out.includes(hex)) out.push(hex);
+        }
+    return out;
+  };
+  const skin = of('hd'), top = of('ch');
+  return { hr: of('hr'), hd: skin, fc: skin, bd: skin, lh: skin, rh: skin, ch: top, ls: top, rs: top, lg: of('lg'), sh: of('sh') };
 }
 
 function flag(v: string | null) {

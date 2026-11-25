@@ -145,6 +145,15 @@ describe('avatar', () => {
     expect(pixels(small.body).slice(0, 2)).toEqual([32, 62]);
   });
 
+  it('turns a player look into a bot figure that draws the same Habbo', async () => {
+    const res = await get(`/convert?figure=${figure}`);
+    expect(res.status).toBe(200);
+    const bot = JSON.parse(res.body.toString()).figure as string;
+    expect(bot).toMatch(/^sd=001\/0&hr=\d{3}\/\d+,\d+,\d+&/);
+    expect((await get(`/avatar?figure=${encodeURIComponent(bot)}`)).status).toBe(200);
+    expect((await get('/convert?figure=123')).status).toBe(400);
+  });
+
   it('lists the parts a room can dress a bot in', async () => {
     const res = await get('/parts?size=s');
     expect(res.status).toBe(200);
@@ -152,6 +161,8 @@ describe('avatar', () => {
     expect(json.size).toBe('s');
     expect(json.parts.hr.length).toBeGreaterThan(10);
     expect(json.parts.hr[0]).toHaveProperty('players');
+    expect(json.colours.ch.length).toBeGreaterThan(5);
+    expect(json.colours.ch[0]).toMatch(/^#[0-9A-F]{6}$/);
     expect((await get('/parts?casts=../etc')).status).toBe(400);
   });
 
