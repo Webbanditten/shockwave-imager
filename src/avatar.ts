@@ -145,6 +145,8 @@ export interface PartChoice {
   room: boolean;
   /** in the figure data: players can wear it */
   players: boolean;
+  /** the colours the figure data offers for it ('#RRGGBB'; none for a part players don't have) */
+  colours: string[];
 }
 
 /** Every part model the assets can draw standing at a zoom (h = 64 px, sh = 32 px), per part: what a bot in that room
@@ -155,7 +157,21 @@ export function partChoices(people: PeopleAssets, roomCasts: FurniCast[], data: 
   const roomNames = new Set<string>();
   for (const cast of roomCasts) for (const n of cast.names.keys()) roomNames.add(n);
   const players = new Set<string>();
-  if (data) for (const sex of ['M', 'F'] as Sex[]) for (const [, sets] of data.parts[sex]) for (const set of sets) for (const [part, model] of set.p) players.add(`${part}=${model3(model)}`);
+  const palettes = new Map<string, string[]>();
+  if (data)
+    for (const sex of ['M', 'F'] as Sex[])
+      for (const [, sets] of data.parts[sex])
+        for (const set of sets)
+          for (const [part, model] of set.p) {
+            const key = `${part}=${model3(model)}`;
+            players.add(key);
+            const list = palettes.get(key) ?? [];
+            for (const c of set.c) {
+              const hex = '#' + String(Array.isArray(c) ? c[0] : c).toUpperCase();
+              if (/^#[0-9A-F]{6}$/.test(hex) && !list.includes(hex)) list.push(hex);
+            }
+            palettes.set(key, list);
+          }
   const found = new Map<string, Map<string, PartChoice>>();
   for (const name of people.names.keys()) {
     const m = re.exec(name);
@@ -165,7 +181,7 @@ export function partChoices(people: PeopleAssets, roomCasts: FurniCast[], data: 
     if (!models) found.set(part, (models = new Map()));
     const room = roomNames.has(name);
     const prev = models.get(model);
-    models.set(model, { model, room: (prev?.room ?? true) && room, players: players.has(`${part}=${model}`) });
+    models.set(model, { model, room: (prev?.room ?? true) && room, players: players.has(`${part}=${model}`), colours: palettes.get(`${part}=${model}`) ?? [] });
   }
   const out: Record<string, PartChoice[]> = {};
   for (const [part, models] of found) out[part] = [...models.values()].sort((a, b) => Number(b.room) - Number(a.room) || a.model.localeCompare(b.model));

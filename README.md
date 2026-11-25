@@ -127,11 +127,12 @@ cuts.
 
 ### `GET /parts?casts=<the room's casts>[&size=b|s]`
 
-What a room can dress a bot in, for an editor: `{ size, zoom, parts: { hr: [{ model, room, players }], ch: [...] } }`,
+What a room can dress a bot in, for an editor: `{ size, zoom, parts: { hr: [{ model, room, players, colours }], ch: [...] } }`,
 every part model drawable at that zoom; `room` = only in the room's casts, `players` = in the figure data (players can
-wear it). Room-only parts come first.
+wear it), `colours` = the colours the figure data offers for that piece (`#RRGGBB`, empty for room-only and staff pieces).
+Room-only parts come first.
 
-`colours` has the colours players pick from per part (the figure data's), for swatches.
+The top-level `colours` has every colour players pick from per part, for pieces without their own.
 
 ### `GET /convert?figure=<25 digits>[&sex=M|F]`
 
