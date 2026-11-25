@@ -161,6 +161,7 @@ describe('avatar', () => {
     expect(json.size).toBe('s');
     expect(json.parts.hr.length).toBeGreaterThan(10);
     expect(json.parts.hr[0]).toHaveProperty('players');
+    expect(json).toHaveProperty('heightFactor', null); // no room casts in the samples: no layout
     expect(json.colours.ch.length).toBeGreaterThan(5);
     expect(json.colours.ch[0]).toMatch(/^#[0-9A-F]{6}$/);
     expect((await get('/parts?casts=../etc')).status).toBe(400);

@@ -10,7 +10,7 @@
  */
 import { loadCast, renderFloorFurni, renderIcon, renderPoster, renderWallItem, type FurniCast, type Rendered } from './render';
 import { renderAnimation } from './animation';
-import { PeopleAssets, guessSex, parseBotFigure, parseFigure, parseFigureData, partChoices, renderAvatar, roomZoom, websiteAvatar, websiteAvatarFrames, type FigureData, type PartModel } from './avatar';
+import { PeopleAssets, guessSex, parseBotFigure, parseFigure, parseFigureData, partChoices, renderAvatar, roomHeightFactor, roomZoom, websiteAvatar, websiteAvatarFrames, type FigureData, type PartModel } from './avatar';
 import { encodeApng } from './apng';
 import { encodeGif } from './gif';
 import { avatarOptions } from './avatar-query';
@@ -163,7 +163,7 @@ export function createRenderer(readAsset: ReadAsset, options: ImagerOptions = {}
     if (casts === 'bad') return 'bad';
     const { assets, data } = await getPeople();
     const size = q.get('size') === 's' || q.get('size') === 'b' ? q.get('size')! : roomZoom(casts) === 32 ? 's' : 'b';
-    return { size, zoom: roomZoom(casts) ?? null, parts: partChoices(casts.length ? assets.withCasts(casts) : assets, casts, data, size === 's'), colours: playerColours(data) };
+    return { size, zoom: roomZoom(casts) ?? null, heightFactor: roomHeightFactor(casts) ?? null, parts: partChoices(casts.length ? assets.withCasts(casts) : assets, casts, data, size === 's'), colours: playerColours(data) };
   }
 
   /** A player's 25-digit look in the bot format: GET /convert?figure=<25 digits>[&sex=M|F] -> { figure, sex }. */

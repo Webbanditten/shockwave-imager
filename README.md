@@ -127,10 +127,11 @@ cuts.
 
 ### `GET /parts?casts=<the room's casts>[&size=b|s]`
 
-What a room can dress a bot in, for an editor: `{ size, zoom, parts: { hr: [{ model, room, players, colours }], ch: [...] } }`,
+What a room can dress a bot in, for an editor: `{ size, zoom, heightFactor, parts: { hr: [{ model, room, players, colours }], ch: [...] } }`,
 every part model drawable at that zoom; `room` = only in the room's casts, `players` = in the figure data (players can
 wear it), `colours` = the colours the figure data offers for that piece (`#RRGGBB`, empty for room-only and staff pieces).
-Room-only parts come first.
+Room-only parts come first. `zoom` and `heightFactor` are the room layout's `#factorx` and `#factorh` (pixels a floor
+height level lifts a tile), `null` without a layout.
 
 The top-level `colours` has every colour players pick from per part, for pieces without their own.
 

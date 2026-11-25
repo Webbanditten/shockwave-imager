@@ -139,6 +139,18 @@ export function roomZoom(casts: FurniCast[]): 32 | 64 | undefined {
   return undefined;
 }
 
+/** A room layout's lift per floor height level in pixels (#factorh of its .room field: 8, 12, 16 or 32), else undefined. */
+export function roomHeightFactor(casts: FurniCast[]): number | undefined {
+  for (const cast of casts) {
+    for (const name of cast.names.keys()) {
+      if (!name.endsWith('.room')) continue;
+      const m = /#factorh\s*:\s*(\d+)/i.exec(fieldText(cast, name) ?? '');
+      if (m) return Number(m[1]);
+    }
+  }
+  return undefined;
+}
+
 export interface PartChoice {
   model: string;
   /** only in the room's casts (not in the people casts) */
